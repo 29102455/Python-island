@@ -29,6 +29,7 @@ class MediaService:
         
         self._fallback_last_seen_position = 0.0
         self._fallback_last_seen_time = 0.0
+        self._fallback_was_playing = False
         
     def _run_async(self, coro):
         asyncio.set_event_loop(self._loop)
@@ -68,17 +69,25 @@ class MediaService:
                     if title != self._last_title or artist != self._last_artist:
                         self._fallback_last_seen_position = 0.0
                         self._fallback_last_seen_time = current_time
+                        self._fallback_was_playing = True # 默认切歌时为播放状态
                         position = 0.0
                     else:
-                        # 假设一直在播放，累加时间作为进度
-                        elapsed = current_time - self._fallback_last_seen_time
-                        position = self._fallback_last_seen_position + elapsed
+                        # Fallback无法判断播放/暂停，因此只要时间流逝，默认就认为它在播放。
+                        # 这里我们保留一个标志位，如果被点击了暂停，就停止累加时间。
+                        if self._fallback_was_playing:
+                            elapsed = current_time - self._fallback_last_seen_time
+                            position = self._fallback_last_seen_position + elapsed
+                            self._fallback_last_seen_position = position
+                            self._fallback_last_seen_time = current_time
+                        else:
+                            position = self._fallback_last_seen_position
+                            self._fallback_last_seen_time = current_time
                     
                     return {
                         'title': title,
                         'artist': artist,
-                        # 无法通过标题判断是否正在播放，假设在播放
-                        'is_playing': True,
+                        # Fallback 下假设一直是在播放
+                        'is_playing': self._fallback_was_playing,
                         'position': position,
                         'is_fallback': True
                     }
@@ -248,6 +257,7 @@ class MediaService:
                 await session.try_play_async()
         else:
             # Fallback 模拟媒体按键控制
+            self._fallback_was_playing = not self._fallback_was_playing
             import win32api
             import win32con
             # VK_MEDIA_PLAY_PAUSE

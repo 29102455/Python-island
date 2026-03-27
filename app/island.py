@@ -450,7 +450,10 @@ class ModernIsland(QWidget):
 
             self.media_controls['lyrics'].setText(display_lyric)
                     
-            self.media_controls['play'].setText("⏸" if info['is_playing'] else "▶️")
+            if info['is_playing']:
+                self.media_controls['play'].setText("⏸")
+            else:
+                self.media_controls['play'].setText("▶️")
         else:
             self.media_controls['title'].setText("暂无播放")
             self.media_controls['artist'].setText("")
