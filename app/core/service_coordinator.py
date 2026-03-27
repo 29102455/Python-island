@@ -11,7 +11,7 @@ from app.services.clipboard import ClipboardService
 from app.services.system_status import SystemStatusService
 from app.services.weather import WeatherService
 from app.services.media import MediaService
-
+from app.services.notification import NotificationService
 
 class ServiceCoordinator:
     """服务协调器
@@ -33,6 +33,7 @@ class ServiceCoordinator:
         self.status_service = SystemStatusService()
         self.weather_service = WeatherService()
         self.media_service = MediaService()
+        self.notification_service = NotificationService()
 
         self._brightness_thread: Optional[WorkerThread] = None
         self._brightness_apply_thread: Optional[WorkerThread] = None
@@ -273,6 +274,9 @@ class ServiceCoordinator:
         return wifi_message, bt_message, battery_message
 
     def cleanup(self):
+        if hasattr(self, 'notification_service'):
+            self.notification_service.stop_listening()
+            
         threads = [
             self._brightness_thread,
             self._brightness_apply_thread,

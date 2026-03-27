@@ -35,6 +35,8 @@ from app.core.timer_manager import TimerManager
 from app.core.ui_builder import IslandUIBuilder
 from app.services.tray import TrayService
 
+from PySide6.QtCore import Signal
+
 
 class ModernIsland(QWidget):
     """带展开式控制面板的现代化灵动岛小部件。
@@ -42,6 +44,8 @@ class ModernIsland(QWidget):
     整合各个功能模块，提供时间显示、亮度控制、系统状态显示、
     剪贴板URL检测等功能。
     """
+    
+    system_notification_received = Signal(dict)
 
     def __init__(self):
         super().__init__()
@@ -268,6 +272,26 @@ class ModernIsland(QWidget):
         self._start_bluetooth_update()  # 初始更新一次蓝牙状态
         self._load_initial_brightness()
         self._load_initial_volume()
+        
+        # 绑定系统通知信号和启动监听
+        self.system_notification_received.connect(self._show_system_notification)
+        self.service_coordinator.notification_service.start_listening(self.system_notification_received.emit)
+
+    def _show_system_notification(self, data: dict):
+        """显示系统通知的UI"""
+        app_name = data.get("app", "系统通知")
+        title = data.get("title", "")
+        content = data.get("content", "")
+        
+        message = f"[{app_name}] {title}"
+        if content:
+            message += f" - {content}"
+            
+        # 截断过长的消息
+        if len(message) > 25:
+            message = message[:22] + "..."
+            
+        self._show_connection_animation(message, "🔔", display_time=5000)
 
     def _load_styles(self):
         try:
@@ -597,7 +621,7 @@ class ModernIsland(QWidget):
             self.service_coordinator.open_urls(selected_urls)
         self._close_url_page()
 
-    def _show_connection_animation(self, message: str, icon: str = "📶"):
+    def _show_connection_animation(self, message: str, icon: str = "📶", display_time: int = CONNECTION_AUTO_CLOSE_DELAY):
         self._docked_before_notification = self._is_docked
         self._ensure_not_docked()
         self.timer_manager.stop_timer("time_update")
@@ -609,7 +633,7 @@ class ModernIsland(QWidget):
 
         self.timer_manager.create_auto_close_timer(
             "connection_auto_close",
-            CONNECTION_AUTO_CLOSE_DELAY,
+            display_time,
             self._close_connection_page
         )
 

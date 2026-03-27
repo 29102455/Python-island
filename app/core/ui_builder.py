@@ -66,7 +66,7 @@ class IslandUIBuilder:
         layout.addWidget(top_container)
         layout.addWidget(controls)
 
-        # 保存媒体控件的引用以便后续更新
+        # 保存控件引用以便后续更新
         return container, time_label, date_label, controls, status_bar, bright_slider, bright_val, volume_slider, volume_val, {
             'title': self.song_title_label,
             'artist': self.song_artist_label,
