@@ -3,12 +3,14 @@
 实现灵动岛的主窗口，整合各个功能模块，提供完整的用户界面。
 """
 
+import re
 from PySide6.QtCore import QEvent, QPropertyAnimation, QRect, QEasingCurve, Qt, QTimer
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QColor
 from PySide6.QtWidgets import QApplication, QWidget
 
 from app.animations.effects import AnimationManager, RoundedMaskHelper
 from app.core.animation_controller import AnimationController
+from app.core.app_config import cfg
 from app.core.config import (
     CLIPBOARD_CHECK_INTERVAL,
     COLLAPSED_HEIGHT,
@@ -55,6 +57,11 @@ class ModernIsland(QWidget):
         self._init_timers()
         self._load_styles()
         self._register_state_callbacks()
+        
+        cfg.islandThemeColor.valueChanged.connect(self._load_styles)
+        
+        from qfluentwidgets import qconfig
+        qconfig.themeColorChanged.connect(self._load_styles)
 
     def _init_managers(self):
         self.state_manager = IslandStateManager()
@@ -296,8 +303,29 @@ class ModernIsland(QWidget):
     def _load_styles(self):
         try:
             with open(STYLES_PATH, "r", encoding="utf-8") as f:
-                self.setStyleSheet(f.read())
-        except Exception:
+                style = f.read()
+                c = cfg.islandThemeColor.value
+                color_str = f"rgba({c.red()}, {c.green()}, {c.blue()}, {c.alpha() / 255.0})"
+                # 匹配 background-color: 后面的任何内容直到分号
+                style = re.sub(r'(#IslandContainer\s*\{[^}]*background-color:\s*)[^;]+', r'\g<1>' + color_str, style)
+                # 匹配 border: 后面的颜色部分直到分号（保留宽度与 solid）
+                style = re.sub(r'(#IslandContainer\s*\{[^}]*border:\s*\d+px\s+solid\s*)[^;]+', r'\g<1>' + color_str, style)
+                self.setStyleSheet(style)
+                
+                # 强制刷新容器样式，确保动态应用颜色生效
+                if hasattr(self, 'bg_widget'):
+                    self.bg_widget.style().unpolish(self.bg_widget)
+                    self.bg_widget.style().polish(self.bg_widget)
+                    self.bg_widget.update()
+                
+                if hasattr(self, 'container'):
+                    self.container.style().unpolish(self.container)
+                    self.container.style().polish(self.container)
+                    self.container.update()
+        except Exception as e:
+            print(f"Error loading styles: {e}")
+            import traceback
+            traceback.print_exc()
             pass
 
     def _register_state_callbacks(self):

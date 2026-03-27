@@ -4,9 +4,22 @@
 """
 
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtCore import Qt
+import os
 
 from app.core.icons import IslandIcon
 
+
+class ClickableLabel(QLabel):
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.PointingHandCursor)
+        self.on_click = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.on_click:
+            self.on_click()
+        super().mousePressEvent(event)
 
 class StatusBar(QWidget):
     """系统状态栏组件，显示WiFi、蓝牙和电池状态。"""
@@ -45,7 +58,23 @@ class StatusBar(QWidget):
         self.status_layout.addLayout(bluetooth_layout)
         self.status_layout.addLayout(battery_layout)
 
-    def _create_icon_label(self, icon: IslandIcon, fallback_text: str) -> QLabel:
+        # 绑定点击事件，跳转到系统设置
+        def open_settings(uri):
+            try:
+                os.startfile(uri)
+            except Exception as e:
+                print(f"打开设置失败: {e}")
+
+        self.wifi_icon.on_click = lambda: open_settings("ms-settings:network-wifi")
+        self.wifi_label.on_click = lambda: open_settings("ms-settings:network-wifi")
+        
+        self.bluetooth_icon.on_click = lambda: open_settings("ms-settings:bluetooth")
+        self.bluetooth_label.on_click = lambda: open_settings("ms-settings:bluetooth")
+        
+        self.battery_icon.on_click = lambda: open_settings("ms-settings:batterysaver")
+        self.battery_label.on_click = lambda: open_settings("ms-settings:batterysaver")
+
+    def _create_icon_label(self, icon: IslandIcon, fallback_text: str) -> ClickableLabel:
         """创建图标标签。
 
         Args:
@@ -53,9 +82,9 @@ class StatusBar(QWidget):
             fallback_text: 备用文本
 
         Returns:
-            QLabel: 图标标签
+            ClickableLabel: 图标标签
         """
-        label = QLabel()
+        label = ClickableLabel()
         label.setObjectName("IconLabel")
         icon_path = icon.path()
         if icon_path in self.icon_cache:
@@ -64,16 +93,16 @@ class StatusBar(QWidget):
             label.setText(fallback_text)
         return label
 
-    def _create_status_label(self, text: str) -> QLabel:
+    def _create_status_label(self, text: str) -> ClickableLabel:
         """创建状态标签。
 
         Args:
             text: 标签文本
 
         Returns:
-            QLabel: 状态标签
+            ClickableLabel: 状态标签
         """
-        label = QLabel(text)
+        label = ClickableLabel(text)
         label.setObjectName("StatusLabel")
         return label
 

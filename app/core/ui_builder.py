@@ -3,6 +3,7 @@
 负责灵动岛UI组件的构建和初始化。
 """
 
+from app.core.app_config import cfg
 from typing import Tuple, Dict, Any
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -22,7 +23,7 @@ from app.ui.controls import ControlRowFactory
 from app.ui.status_bar import StatusBar
 from app.ui.url_dialog import UrlDialog
 
-from PySide6.QtGui import QFont  # 如果已导入则无需重复
+from PySide6.QtGui import QFont, QColor  # 如果已导入则无需重复
 
 
 
@@ -80,6 +81,8 @@ class IslandUIBuilder:
     def _create_container(self) -> QFrame:
         container = QFrame(self._parent)
         container.setObjectName("IslandContainer")
+        container.setAttribute(Qt.WA_StyledBackground, True)
+        container.setAutoFillBackground(True)
         container.setFixedSize(COLLAPSED_WIDTH, COLLAPSED_HEIGHT)
         container.setMouseTracking(True)
         return container
@@ -300,11 +303,15 @@ class IslandUIBuilder:
         
         # 背景容器（用于绘制圆角和背景色）
         self.bg_widget = QWidget()
-        self.bg_widget.setStyleSheet("""
-            QWidget {
-                background-color: #000000;
+        self.bg_widget.setObjectName("IslandContainer")
+        
+        # 强制设置初始背景色和圆角，以防 QSS 未及时生效
+        color = cfg.islandThemeColor.value.name(QColor.HexArgb) if cfg.islandThemeColor.value.alpha() < 255 else cfg.islandThemeColor.value.name()
+        self.bg_widget.setStyleSheet(f"""
+            QWidget#IslandContainer {{
+                background-color: {color};
                 border-radius: 20px;
-            }
+            }}
         """)
         
         bg_layout = QVBoxLayout(self.bg_widget)
