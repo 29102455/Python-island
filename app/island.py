@@ -187,6 +187,8 @@ class ModernIsland(QWidget):
             self.status_bar,
             self.bright_slider,
             self.bright_val,
+            self.volume_slider,
+            self.volume_val,
             self.media_controls
         ) = ui_builder.build()
 
@@ -196,6 +198,7 @@ class ModernIsland(QWidget):
         self.animation_manager = AnimationManager(self)
         self._icon_cache = ui_builder.get_icon_cache()
         self.current_brightness = 50
+        self.current_volume = 50
 
         # 绑定媒体控制事件
         self.media_controls['play'].clicked.connect(self.service_coordinator.media_play_pause)
@@ -233,6 +236,7 @@ class ModernIsland(QWidget):
         self._last_lyrics_text = ""
 
         self.bright_slider.valueChanged.connect(self._on_brightness_slider_changed)
+        self.volume_slider.valueChanged.connect(self._on_volume_slider_changed)
         self._update_rounded_mask()
 
     def _init_timers(self):
@@ -253,6 +257,9 @@ class ModernIsland(QWidget):
         self.timer_manager.create_debounce_timer(
             "brightness_debounce", DEBOUNCE_DELAY, self._apply_brightness
         )
+        self.timer_manager.create_debounce_timer(
+            "volume_debounce", DEBOUNCE_DELAY, self._apply_volume
+        )
         self.timer_manager.create_timer(
             "clipboard_check", CLIPBOARD_CHECK_INTERVAL, self._check_clipboard
         )
@@ -260,6 +267,7 @@ class ModernIsland(QWidget):
         self._start_status_update()
         self._start_bluetooth_update()  # 初始更新一次蓝牙状态
         self._load_initial_brightness()
+        self._load_initial_volume()
 
     def _load_styles(self):
         try:
@@ -310,6 +318,26 @@ class ModernIsland(QWidget):
 
     def _apply_brightness(self):
         self.service_coordinator.apply_brightness(self.current_brightness)
+
+    def _load_initial_volume(self):
+        self.service_coordinator.load_initial_volume(
+            self._on_volume_loaded
+        )
+
+    def _on_volume_loaded(self, volume):
+        if volume is not None:
+            volume = max(0, min(100, volume))
+            self.volume_slider.setValue(volume)
+            self.volume_val.setText(f"{volume}%")
+            self.current_volume = volume
+
+    def _on_volume_slider_changed(self, value):
+        self.volume_val.setText(f"{value}%")
+        self.current_volume = value
+        self.timer_manager.trigger_debounce("volume_debounce")
+
+    def _apply_volume(self):
+        self.service_coordinator.apply_volume(self.current_volume)
 
     def _start_status_update(self):
         self.service_coordinator.update_system_status(

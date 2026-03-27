@@ -6,6 +6,7 @@
 from typing import Tuple, List, Optional, Callable, Dict, Any
 from app.core.worker import WorkerThread
 from app.services.brightness import BrightnessService
+from app.services.volume import VolumeService
 from app.services.clipboard import ClipboardService
 from app.services.system_status import SystemStatusService
 from app.services.weather import WeatherService
@@ -27,6 +28,7 @@ class ServiceCoordinator:
 
     def __init__(self):
         self.brightness_service = BrightnessService()
+        self.volume_service = VolumeService()
         self.clipboard_service = ClipboardService()
         self.status_service = SystemStatusService()
         self.weather_service = WeatherService()
@@ -34,6 +36,8 @@ class ServiceCoordinator:
 
         self._brightness_thread: Optional[WorkerThread] = None
         self._brightness_apply_thread: Optional[WorkerThread] = None
+        self._volume_thread: Optional[WorkerThread] = None
+        self._volume_apply_thread: Optional[WorkerThread] = None
         self._status_thread: Optional[WorkerThread] = None
 
         self._previous_wifi_status: Optional[Tuple] = None
@@ -64,6 +68,25 @@ class ServiceCoordinator:
         if callback:
             self._brightness_apply_thread.finished_signal.connect(callback)
         self._brightness_apply_thread.start()
+
+    def load_initial_volume(self, callback: Callable[[Optional[int]], None]):
+        if self._volume_thread and self._volume_thread.isRunning():
+            return
+
+        self._volume_thread = WorkerThread(VolumeService.get_volume)
+        self._volume_thread.finished_signal.connect(callback)
+        self._volume_thread.start()
+
+    def apply_volume(self, value: int, callback: Optional[Callable] = None):
+        if self._volume_apply_thread and self._volume_apply_thread.isRunning():
+            return
+
+        self._volume_apply_thread = WorkerThread(
+            VolumeService.set_volume, value
+        )
+        if callback:
+            self._volume_apply_thread.finished_signal.connect(callback)
+        self._volume_apply_thread.start()
 
     def update_system_status(
         self,
@@ -253,6 +276,8 @@ class ServiceCoordinator:
         threads = [
             self._brightness_thread,
             self._brightness_apply_thread,
+            self._volume_thread,
+            self._volume_apply_thread,
             self._status_thread
         ]
 

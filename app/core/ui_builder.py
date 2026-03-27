@@ -45,12 +45,12 @@ class IslandUIBuilder:
         self._parent = parent
         self._icon_cache: Dict[IslandIcon, Any] = {}
 
-    def build(self) -> Tuple[QFrame, QLabel, QLabel, QStackedWidget, StatusBar, QSlider, QLabel]:
+    def build(self) -> Tuple[QFrame, QLabel, QLabel, QStackedWidget, StatusBar, QSlider, QLabel, QSlider, QLabel, Dict[str, Any]]:
         self._icon_cache = ControlRowFactory.preload_icons(list(IslandIcon))
 
         container = self._create_container()
         time_label, date_label, weather_label_small = self._create_time_labels()
-        controls, status_bar, bright_slider, bright_val = self._create_controls()
+        controls, status_bar, bright_slider, bright_val, volume_slider, volume_val = self._create_controls()
 
         # 使用水平布局将时间和天气放在一起
         top_container = QWidget()
@@ -67,7 +67,7 @@ class IslandUIBuilder:
         layout.addWidget(controls)
 
         # 保存媒体控件的引用以便后续更新
-        return container, time_label, date_label, controls, status_bar, bright_slider, bright_val, {
+        return container, time_label, date_label, controls, status_bar, bright_slider, bright_val, volume_slider, volume_val, {
             'title': self.song_title_label,
             'artist': self.song_artist_label,
             'lyrics': self.lyrics_label,
@@ -109,12 +109,12 @@ class IslandUIBuilder:
 
         return time_label, date_label, weather_label_small
 
-    def _create_controls(self) -> Tuple[QStackedWidget, StatusBar, QSlider, QLabel]:
+    def _create_controls(self) -> Tuple[QStackedWidget, StatusBar, QSlider, QLabel, QSlider, QLabel]:
         controls = QStackedWidget()
         controls.hide()
         controls.setFixedHeight(CONTROLS_HEIGHT)
 
-        ctrl_page, status_bar, bright_slider, bright_val = self._create_ctrl_page()
+        ctrl_page, status_bar, bright_slider, bright_val, volume_slider, volume_val = self._create_ctrl_page()
         url_single_page, url_multi_page = self._create_url_pages()
         empty_page = self._create_empty_page()
 
@@ -123,24 +123,28 @@ class IslandUIBuilder:
         controls.addWidget(url_multi_page)
         controls.addWidget(empty_page)
 
-        return controls, status_bar, bright_slider, bright_val
+        return controls, status_bar, bright_slider, bright_val, volume_slider, volume_val
 
-    def _create_ctrl_page(self) -> Tuple[QWidget, StatusBar, QSlider, QLabel]:
+    def _create_ctrl_page(self) -> Tuple[QWidget, StatusBar, QSlider, QLabel, QSlider, QLabel]:
         ctrl_page = QWidget()
         ctrl_layout = QVBoxLayout(ctrl_page)
         #减少顶部边距
-        ctrl_layout.setContentsMargins(5, 20, 5, 10)
-        ctrl_layout.setSpacing(15)
+        ctrl_layout.setContentsMargins(5, 10, 5, 10)
+        ctrl_layout.setSpacing(10)
 
         bright_row, bright_slider, bright_val = \
             ControlRowFactory.create(self._icon_cache, IslandIcon.LIGHT, "亮度")
+            
+        volume_row, volume_slider, volume_val = \
+            ControlRowFactory.create(self._icon_cache, IslandIcon.VOLUME, "音量")
 
         status_bar = StatusBar(self._icon_cache, self._parent)
 
         ctrl_layout.addLayout(bright_row)
+        ctrl_layout.addLayout(volume_row)
         ctrl_layout.addWidget(status_bar)
 
-        return ctrl_page, status_bar, bright_slider, bright_val
+        return ctrl_page, status_bar, bright_slider, bright_val, volume_slider, volume_val
 
     def _create_url_pages(self) -> Tuple[UrlDialog, UrlDialog]:
         url_single_page = UrlDialog()
@@ -153,7 +157,7 @@ class IslandUIBuilder:
         media_layout = QVBoxLayout(media_page)
         # 恢复使用原生的 margin 和 spacing 来管理布局，避免弹簧导致的挤压重叠
         # 调整上边距，将歌曲名称及后续控件整体上移
-        media_layout.setContentsMargins(15, 5, 15, 10)
+        media_layout.setContentsMargins(15, 10, 15, 10)
         # 将整体间距缩小为0，通过控件自身的margin/padding来控制，使得歌词和下方控制按钮更近
         media_layout.setSpacing(0) 
         
@@ -170,6 +174,8 @@ class IslandUIBuilder:
         font.setPointSize(14)
         self.song_title_label.setFont(font)
         self.song_title_label.setStyleSheet("color: rgba(255, 255, 255, 0.9);")
+        # 允许标题在过长时自动换行，避免被截断
+        self.song_title_label.setWordWrap(True)
         
         self.song_artist_label = QLabel("")
         self.song_artist_label.hide() # 隐藏歌手信息
@@ -177,9 +183,9 @@ class IslandUIBuilder:
         title_layout.addWidget(self.song_title_label)
         
         # 将 title_container 设为固定高度，只留给歌名足够的空间
-        title_container.setFixedHeight(30)
-        # 增加标题容器的下边距，拉开与下方歌词区域的距离
-        title_container.setContentsMargins(0, 0, 0, 10)
+        title_container.setFixedHeight(50) # 增加高度以容纳顶部边距
+        # 增加标题容器的下边距，拉开与下方歌词区域的距离，并增加上边距将文字往下推
+        title_container.setContentsMargins(0, 15, 0, 5)
         media_layout.addWidget(title_container)
         
         # --- 歌词区域 ---
@@ -221,7 +227,7 @@ class IslandUIBuilder:
         # --- 媒体控制按钮区域 ---
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)
-        btn_layout.setContentsMargins(0, 10, 0, 0)
+        btn_layout.setContentsMargins(0, 5, 0, 0) # 减小按钮上方的边距
         btn_layout.setSpacing(40)
         
         from PySide6.QtWidgets import QPushButton

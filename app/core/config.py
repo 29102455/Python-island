@@ -23,14 +23,14 @@ def get_resource_path(relative_path: str) -> str:
 COLLAPSED_WIDTH = 180
 COLLAPSED_HEIGHT = 40
 EXPANDED_WIDTH = 400
-EXPANDED_HEIGHT = 160
+EXPANDED_HEIGHT = 200 # 增加展开高度以容纳音量控制
 
 # Hover 尺寸
 HOVER_WIDTH = 300
 HOVER_HEIGHT = 60
 
 # 控件尺寸配置
-CONTROLS_HEIGHT = 120
+CONTROLS_HEIGHT = 160 # 增加控制面板高度以容纳音量控制
 TIME_LABEL_HEIGHT = 40
 
 # 图标和滑动条配置

@@ -38,7 +38,9 @@ class ControlRowFactory:
         if icon_path in icon_cache:
             icon_label.setPixmap(icon_cache[icon_path])
         elif label_text == "亮度":
-            icon_label.setText("\u0f0a0")
+            icon_label.setText("\u2600") # ☀
+        elif label_text == "音量":
+            icon_label.setText("\U0001f50a") # 🔊
         else:
             icon_label.setText("\u0f05a")
 
