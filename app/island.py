@@ -227,6 +227,10 @@ class ModernIsland(QWidget):
         self._is_docked = False
         self._snap_preview = False
         self._docked_before_notification = False
+        
+        # 缓存解析好的歌词
+        self._parsed_lyrics = []
+        self._last_lyrics_text = ""
 
         self.bright_slider.valueChanged.connect(self._on_brightness_slider_changed)
         self._update_rounded_mask()
@@ -238,6 +242,10 @@ class ModernIsland(QWidget):
         self.timer_manager.create_timer(
             "status_update", STATUS_UPDATE_INTERVAL, self._start_status_update
         )
+        # 提高媒体信息更新频率，以保证歌词滚动平滑 (1000ms -> 100ms)
+        self.timer_manager.create_timer(
+            "media_update", 100, self._update_media_info
+        )
         # 添加蓝牙状态更新定时器，频率较低，避免影响网络状态检测
         self.timer_manager.create_timer(
             "bluetooth_update", 10000, self._start_bluetooth_update
@@ -247,9 +255,6 @@ class ModernIsland(QWidget):
         )
         self.timer_manager.create_timer(
             "clipboard_check", CLIPBOARD_CHECK_INTERVAL, self._check_clipboard
-        )
-        self.timer_manager.create_timer(
-            "media_update", 1000, self._update_media_info
         )
 
         self._start_status_update()
@@ -373,6 +378,7 @@ class ModernIsland(QWidget):
                 self.weather_small_label.hide()
 
     def _update_media_info(self):
+        # Always update if expanded to the media page
         if not self.state_manager.is_expanded() or self.controls.currentIndex() != 3:
             return
             
@@ -382,8 +388,67 @@ class ModernIsland(QWidget):
             self.media_controls['artist'].setText(info['artist'] or "")
             
             # 更新歌词并限制在一行内显示
-            new_lyrics = info.get('lyrics', '').replace('\n', ' ').strip()
-            self.media_controls['lyrics'].setText(new_lyrics)
+            lyrics_text = info.get('lyrics', '')
+            position = info.get('position', 0)
+            
+            # 解析并缓存歌词，避免每100ms重新解析
+            if lyrics_text != self._last_lyrics_text:
+                self._last_lyrics_text = lyrics_text
+                self._parsed_lyrics = []
+                if lyrics_text and lyrics_text not in ["正在搜索歌词...", "未找到歌词", "获取歌词失败"]:
+                    lines = lyrics_text.split('\n')
+                    for line in lines:
+                        if line.startswith('['):
+                            parts = line.split(']', 1)
+                            if len(parts) > 1:
+                                time_str = parts[0][1:]
+                                try:
+                                    time_parts = time_str.split(':')
+                                    if len(time_parts) >= 2:
+                                        minutes = float(time_parts[0])
+                                        seconds = float(time_parts[1])
+                                        lyric_time = minutes * 60 + seconds
+                                        text = parts[1].strip()
+                                        if text:
+                                            self._parsed_lyrics.append((lyric_time, text))
+                                except ValueError:
+                                    pass
+                    # 按时间排序
+                    self._parsed_lyrics.sort(key=lambda x: x[0])
+
+            display_lyric = ""
+            if self._parsed_lyrics:
+                # 寻找当前时间对应的歌词
+                for i in range(len(self._parsed_lyrics)):
+                    if i == len(self._parsed_lyrics) - 1:
+                        if position >= self._parsed_lyrics[i][0]:
+                            display_lyric = self._parsed_lyrics[i][1]
+                    else:
+                        if self._parsed_lyrics[i][0] <= position < self._parsed_lyrics[i+1][0]:
+                            display_lyric = self._parsed_lyrics[i][1]
+                            break
+                if not display_lyric and position < self._parsed_lyrics[0][0]:
+                    display_lyric = "..." # 歌曲前奏
+            else:
+                # 没有时间轴或未解析出有效歌词，降级为显示单行文本
+                if lyrics_text in ["正在搜索歌词...", "未找到歌词", "获取歌词失败"]:
+                    display_lyric = lyrics_text
+                else:
+                    lines = lyrics_text.split('\n')
+                    for line in lines:
+                        if line.startswith('['):
+                            parts = line.split(']', 1)
+                            if len(parts) > 1:
+                                line = parts[1]
+                        line = line.strip()
+                        if line:
+                            display_lyric = line
+                            break
+            
+            if not display_lyric:
+                display_lyric = lyrics_text.replace('\n', ' ').strip()
+
+            self.media_controls['lyrics'].setText(display_lyric)
                     
             self.media_controls['play'].setText("⏸" if info['is_playing'] else "▶️")
         else:

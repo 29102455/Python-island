@@ -8,6 +8,7 @@ __pycache__/
 *$py.class
 
 # IDE and editor files
+.idea/
 .vscode/
 .idea/
 *.swp
