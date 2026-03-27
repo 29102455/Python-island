@@ -186,12 +186,21 @@ class ModernIsland(QWidget):
             self.controls,
             self.status_bar,
             self.bright_slider,
-            self.bright_val
+            self.bright_val,
+            self.media_controls
         ) = ui_builder.build()
+
+        # 引用折叠状态下的小天气标签
+        self.weather_small_label = self.media_controls.get('weather_small')
 
         self.animation_manager = AnimationManager(self)
         self._icon_cache = ui_builder.get_icon_cache()
         self.current_brightness = 50
+
+        # 绑定媒体控制事件
+        self.media_controls['play'].clicked.connect(self.service_coordinator.media_play_pause)
+        self.media_controls['prev'].clicked.connect(self.service_coordinator.media_prev_track)
+        self.media_controls['next'].clicked.connect(self.service_coordinator.media_next_track)
 
         self.animation_controller = AnimationController(
             self.animation_manager,
@@ -204,6 +213,7 @@ class ModernIsland(QWidget):
         self.time_display_manager = TimeDisplayManager(
             self.time_label,
             self.date_label,
+            self.weather_small_label,
             IslandUIBuilder.position_label_center
         )
 
@@ -237,6 +247,9 @@ class ModernIsland(QWidget):
         )
         self.timer_manager.create_timer(
             "clipboard_check", CLIPBOARD_CHECK_INTERVAL, self._check_clipboard
+        )
+        self.timer_manager.create_timer(
+            "media_update", 1000, self._update_media_info
         )
 
         self._start_status_update()
@@ -338,10 +351,46 @@ class ModernIsland(QWidget):
             self._show_connection_animation(battery_msg, "battery")
 
     def _update_time_display(self):
+        weather_data = None
+        # 无论是展开还是收起状态，只要天气标签存在，我们就获取天气数据
+        weather_data = self.service_coordinator.get_weather()
+            
+        weather_full = weather_data.get('full') if isinstance(weather_data, dict) else weather_data
+
         self.time_display_manager.update(
             self.state_manager.is_expanded(),
-            self.state_manager.is_hovering()
+            self.state_manager.is_hovering(),
+            weather_full
         )
+        
+        # 更新折叠状态下的小天气标签
+        if hasattr(self, 'weather_small_label') and self.weather_small_label:
+            if weather_data and isinstance(weather_data, dict) and not self.state_manager.is_expanded() and not self.state_manager.is_hovering():
+                weather_text = f"{weather_data.get('icon', '')} {weather_data.get('temp', '')}".strip()
+                self.weather_small_label.setText(weather_text)
+                self.weather_small_label.show()
+            else:
+                self.weather_small_label.hide()
+
+    def _update_media_info(self):
+        if not self.state_manager.is_expanded() or self.controls.currentIndex() != 3:
+            return
+            
+        info = self.service_coordinator.get_media_info()
+        if info:
+            self.media_controls['title'].setText(info['title'] or "暂无播放")
+            self.media_controls['artist'].setText(info['artist'] or "")
+            
+            # 更新歌词并限制在一行内显示
+            new_lyrics = info.get('lyrics', '').replace('\n', ' ').strip()
+            self.media_controls['lyrics'].setText(new_lyrics)
+                    
+            self.media_controls['play'].setText("⏸" if info['is_playing'] else "▶️")
+        else:
+            self.media_controls['title'].setText("暂无播放")
+            self.media_controls['artist'].setText("")
+            self.media_controls['lyrics'].setText("请打开音乐播放器")
+            self.media_controls['play'].setText("▶️")
 
     def _check_clipboard(self):
         has_new, urls = self.service_coordinator.check_clipboard()

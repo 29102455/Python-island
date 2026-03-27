@@ -15,6 +15,14 @@
     font-weight: bold; /* 粗体 */
 }
 
+/* 天气小标签样式 */
+#WeatherLabelSmall {
+    color: #FFFFFF;
+    font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+}
+
 /* 日期+时间文字样式 */
 #DateLabel {
     color: #FFFFFF; /* 纯白色文字 */

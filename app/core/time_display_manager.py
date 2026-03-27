@@ -89,10 +89,12 @@ class TimeDisplayManager:
         self,
         time_label,
         date_label,
+        weather_label_small=None,
         position_callback: Optional[Callable] = None
     ):
         self.time_label = time_label
         self.date_label = date_label
+        self.weather_label_small = weather_label_small
         self._position_callback = position_callback
         self._connection_label = None
         self._icon_label = None
@@ -100,7 +102,7 @@ class TimeDisplayManager:
         self._last_cpu_usage = None
         self._last_memory_usage = None
 
-    def update_for_expanded(self):
+    def update_for_expanded(self, weather_data: str = None):
         now = datetime.now()
         current_date = now.strftime("%m/%d")
         weekday_map = {
@@ -111,6 +113,9 @@ class TimeDisplayManager:
         current_time = now.strftime("%H:%M")
 
         text = f"{current_date} {current_weekday} {current_time}"
+        if weather_data:
+            text = f"{text} | {weather_data}"
+            
         self.date_label.setText(text)
 
         if self._position_callback:
@@ -147,6 +152,8 @@ class TimeDisplayManager:
     def _show_hover_info_loading(self, time_str: str):
         """显示悬停信息标签（带占位符）。"""
         self.time_label.hide()
+        if self.weather_label_small:
+            self.weather_label_small.hide()
 
         from app.core.config import HOVER_WIDTH, HOVER_HEIGHT
         parent = self.time_label.parent()
@@ -175,6 +182,8 @@ class TimeDisplayManager:
         """
         # 隐藏原来的时间标签，使用自定义布局
         self.time_label.hide()
+        if self.weather_label_small:
+            self.weather_label_small.hide()
 
         from app.core.config import HOVER_WIDTH, HOVER_HEIGHT
         parent = self.time_label.parent()
@@ -202,9 +211,9 @@ class TimeDisplayManager:
         current_time = now.strftime("%H:%M")
         self.time_label.setText(current_time)
 
-    def update(self, is_expanded: bool, is_hovering: bool):
+    def update(self, is_expanded: bool, is_hovering: bool, weather_data: str = None):
         if is_expanded:
-            self.update_for_expanded()
+            self.update_for_expanded(weather_data)
         elif is_hovering:
             self.update_for_hover()
         else:
@@ -212,6 +221,7 @@ class TimeDisplayManager:
 
     def show_time_only(self):
         self.time_label.show()
+        # weather_label_small is managed dynamically by island.py's _update_time_display
         self.date_label.hide()
         if self._connection_label:
             self._connection_label.hide()
@@ -222,6 +232,8 @@ class TimeDisplayManager:
 
     def show_date_only(self):
         self.time_label.hide()
+        if self.weather_label_small:
+            self.weather_label_small.hide()
         self.date_label.show()
 
     def _load_icon(self, icon_name: str):
@@ -257,6 +269,8 @@ class TimeDisplayManager:
         
         # 隐藏所有其他标签
         self.time_label.hide()
+        if self.weather_label_small:
+            self.weather_label_small.hide()
         self.date_label.hide()
         if self._hover_info_label:
             self._hover_info_label.hide()
@@ -322,6 +336,8 @@ class TimeDisplayManager:
 
     def hide_all(self):
         self.time_label.hide()
+        if self.weather_label_small:
+            self.weather_label_small.hide()
         self.date_label.hide()
         if self._connection_label:
             self._connection_label.hide()

@@ -22,7 +22,7 @@ def get_resource_path(relative_path: str) -> str:
 # 窗口尺寸配置
 COLLAPSED_WIDTH = 180
 COLLAPSED_HEIGHT = 40
-EXPANDED_WIDTH = 360
+EXPANDED_WIDTH = 400
 EXPANDED_HEIGHT = 160
 
 # Hover 尺寸

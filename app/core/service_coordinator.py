@@ -3,11 +3,13 @@
 协调各个服务的调用和回调处理。
 """
 
-from typing import Tuple, List, Optional, Callable
+from typing import Tuple, List, Optional, Callable, Dict, Any
 from app.core.worker import WorkerThread
 from app.services.brightness import BrightnessService
 from app.services.clipboard import ClipboardService
 from app.services.system_status import SystemStatusService
+from app.services.weather import WeatherService
+from app.services.media import MediaService
 
 
 class ServiceCoordinator:
@@ -19,12 +21,16 @@ class ServiceCoordinator:
         brightness_service: 亮度服务
         clipboard_service: 剪贴板服务
         status_service: 系统状态服务
+        weather_service: 天气服务
+        media_service: 媒体服务
     """
 
     def __init__(self):
         self.brightness_service = BrightnessService()
         self.clipboard_service = ClipboardService()
         self.status_service = SystemStatusService()
+        self.weather_service = WeatherService()
+        self.media_service = MediaService()
 
         self._brightness_thread: Optional[WorkerThread] = None
         self._brightness_apply_thread: Optional[WorkerThread] = None
@@ -123,6 +129,21 @@ class ServiceCoordinator:
     def check_clipboard(self) -> Tuple[bool, List[str]]:
         return self.clipboard_service.check_for_new_urls()
 
+    def get_weather(self) -> Optional[str]:
+        return self.weather_service.get_weather()
+
+    def get_media_info(self) -> Optional[Dict[str, Any]]:
+        return self.media_service.get_media_info()
+
+    def media_play_pause(self):
+        self.media_service.play_pause()
+
+    def media_next_track(self):
+        self.media_service.next_track()
+
+    def media_prev_track(self):
+        self.media_service.prev_track()
+
     @staticmethod
     def open_url(url: str):
         ClipboardService.open_url(url)
@@ -187,10 +208,10 @@ class ServiceCoordinator:
             current_battery_charging = False
             prev_battery_charging = False
         else:
-            current_battery_charging = battery_status in ["接通电源", "充电"]
+            current_battery_charging = battery_status in ["充电", "充电中", "已充满"]
             prev_battery_charging = (
                 self._previous_battery_status and 
-                self._previous_battery_status in ["接通电源", "充电"]
+                self._previous_battery_status in ["充电", "充电中", "已充满"]
             )
 
         wifi_message = None
